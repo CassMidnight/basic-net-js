@@ -13,7 +13,15 @@ let nodeTemplate = {
 };
 
 function createTemplateNode(){
-  return {...nodeTemplate, weights: []}
+  let newTemplate = {...nodeTemplate};
+  Object.keys(newTemplate).forEach(prop => {
+    if ( Array.isArray( newTemplate[prop] ) ){
+      newTemplate[prop] = [];
+    } else if ( typeof newTemplate[prop] === 'object') {
+      throw "Error! Function createTemplateNode does not support deep copy!"
+    }
+  })
+  return {...nodeTemplate, weights: [], newWeights: []}
 }
 
 let inputNodeCount = 4;
@@ -91,26 +99,31 @@ fs.readFile('irisTemp.csv', 'utf8', function (err,data) {
 });
 
 function randomiseNodes(model){
-  for(layerIndex = 0; layerIndex < model.length; layerIndex++){
-    for(var nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
-      //console.log(layerIndex, nodeIndex);
+  for(let layerIndex = 0; layerIndex < model.length; layerIndex++){
+    for(let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
 
-      let inputLayerIndex = Math.max(layerIndex - 1, 0);
+      let inputLayerIndex = layerIndex - 1;
+
+      //skip the input layer since it has no weights
+      if (inputLayerIndex < 0){
+        continue; 
+      }
       //console.log(inputLayerIndex);
       let inputLayerLength = model[inputLayerIndex].length;
 
       //console.log('randomiseNodes', inputLayerIndex, inputLayerLength)
 
-      for( j = 0; j < inputLayerLength; j++ ){
+      for(let j = 0; j < inputLayerLength; j++ ){
         model[layerIndex][nodeIndex].weights.push(Math.random());
       }
 
       //console.log(model[layerIndex][nodeIndex].weights);
 
-      model[layerIndex][nodeIndex].bias = Math.random();
+      // You may want to comment this back in later
+      //model[layerIndex][nodeIndex].bias = Math.random();
     }
   }
- 
+  //logObject("randomised model", model);
 }
 
 function train(model, data, inputValueCount, outputValueCount){
@@ -134,19 +147,17 @@ function train(model, data, inputValueCount, outputValueCount){
         validationData.push(exPair)
         break;
     }
-  })
+  });
 
   //start with eta of 0.1
   let eta = 0.1;
-  let presentations = 3;
+  let presentations = 1000;
 
-  for (let k = 0; k < presentations; k++){
+  for (let k = 1; k <= presentations; k++){
     let sumPresentationError = 0;
     trainingData.forEach(exPair => {
       run(model, exPair);
-      //logObject("model", model)
       let totalError = calculateError(model, exPair);
-      //console.log("totalError", totalError);
       calculateNewWeights(model, eta, totalError);
       updatetoNewWeights(model);
 
@@ -178,7 +189,6 @@ function calulateLayers(layer1, layer2){
   for(nodeIndex = 0; nodeIndex < layer2.length; nodeIndex++){
     let node = layer2[nodeIndex];
     let sumOfWeights = node.weights.reduce((acc, weight, index) => {
-      //console.log(index)
       return acc + (weight * layer1[index].value);
     }, 0); 
     
@@ -213,13 +223,17 @@ function calculateError(model, exPair){
 
 function calculateNewWeights(model, eta, systemError){
   for (let layerIndex = model.length - 1; layerIndex > 0; layerIndex--){
-    for (let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
-      for (let weightIndex = 0; weightIndex < model[layerIndex][nodeIndex].weights.length; weightIndex++){
+    //console.log(`calculating weights for layer ${layerIndex}`);
+    let layer = model[layerIndex];
+    //logObject(`layer ${layerIndex} pre-change`, layer);
+    layer.forEach((node, nodeIndex) => {
+      //console.log("node index", nodeIndex)
+      node.weights.forEach((weight, weightIndex) => {
         let newWeight = calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightIndex);
-        //console.log(newWeight);
         model[layerIndex][nodeIndex].newWeights[weightIndex] = newWeight;
-      }
-    }
+      });
+    }) 
+    //logObject(`layer ${layerIndex} post-change`, layer);
   }
 }
 
@@ -229,6 +243,7 @@ function updatetoNewWeights(model){
       for (let weightIndex = 0; weightIndex < model[layerIndex][nodeIndex].weights.length; weightIndex++){
         model[layerIndex][nodeIndex].weights[weightIndex] = model[layerIndex][nodeIndex].newWeights[weightIndex];
       }
+      //model[layerIndex][nodeIndex].newWeights = [];
     }
   }
 }
