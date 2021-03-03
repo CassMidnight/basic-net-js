@@ -2,10 +2,14 @@
 
 ## Setup
 
-1. Download and install the LTS version of node.js from here: https://nodejs.org/en/ 
+1. Download and install the LTS version of node.js from here: https://nodejs.org/en/ (if it asks if it should add stuff to your path click yes or tick the box)
 2. Download and install VScode from here: https://code.visualstudio.com/
 
 ## Clone Git Repo (get the code from github with version control)
+
+About git in general: 
+
+I suggest you use Sourcetree as your git GUI, I use it and find it makes connecting to and managing git repos easier and less command line driven.
 
 ### Setup 
 
@@ -18,6 +22,9 @@
 7. Click the clone button
 
 ### Push changes
+
+You can use any git tool you want but here is the how to for Sourcetree.
+
 1. Open sourceree
 2. Click the plus button next to any of the files you have changed, this will move them into the "staged" area 
 3. Click the commit button to confirm your changes, you will need to provide a short commit message saying what you changed
@@ -29,11 +36,11 @@
 
 ## Run
 
-1. Open folder in VScode 
+1. Open the folder with the project in VScode 
 2. Run the below command in the VScode terminal
 
 `node .\main.js`  
 
-If the output is too long use the below to redirect the output to a file called output.txt
+If the output in the terminal is too long for the scrollback use the below to redirect the output to a file called output.txt in the same directory.
 
 `node .\main.js > output.txt`
