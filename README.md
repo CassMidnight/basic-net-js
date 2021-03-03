@@ -17,11 +17,12 @@ I suggest you use Sourcetree as your git GUI, I use it and find it makes connect
 
 1. Download and install Sourcetree from here: https://www.sourcetreeapp.com/ 
 2. Open Sourcetree
-3. File -> New
-4. Set source path to: https://github.com/CassMidnight/basic-net-js
-5. Click the 'browse' button next to set desinaion path
-6. Create a new folder in an appropriate direcory and select it
-7. Click the clone button
+3. You may be asked to login to an account or setup some basic settings such as name and email, git needs those.
+4. File -> New
+5. Set source path to: https://github.com/CassMidnight/basic-net-js
+6. Click the 'browse' button next to set desinaion path
+7. Create a new folder in an appropriate direcory and select it
+8. Click the clone button
 
 ### Push changes
 
