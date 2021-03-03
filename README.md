@@ -19,11 +19,21 @@
 
 ### Push changes
 1. Open sourceree
-2. 
+2. Click the plus button next to any of the files you have changed, this will move them into the "staged" area 
+3. Click the commit button to confirm your changes, you will need to provide a short commit message saying what you changed
+4. Click the pull button, this will download any changes I have made
+a. If the changes I have made could be merged without causing any conflicts then any changes i have made will show up
+b. If the changes I have made could NOT be merged without causing conflict then source tree will ask you to resolve the conflicts in its merge tool 
+c. resolve the conflicts and click commit
+5. Click the push button to push all your changes to the server
 
 ## Run
 
 1. Open folder in VScode 
 2. Run the below command in the VScode terminal
-`node .\main.js` 
 
+`node .\main.js`  
+
+If the output is too long use the below to redirect the output to a file called output.txt
+
+`node .\main.js > output.txt`
