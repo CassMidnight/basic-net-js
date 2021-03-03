@@ -10,6 +10,7 @@ let nodeTemplate = {
   newWeights: [],
   error: 0,
   derivative: 0,
+  gradient: 0,
 };
 
 function createTemplateNode(){
@@ -159,10 +160,11 @@ function train(model, data, inputValueCount, outputValueCount){
     trainingData.forEach(exPair => {
       run(model, exPair);
       //console.log(exPair);
+      calculateNodeDerivatives(model);
       let totalError = calculateError(model, exPair);
       //console.log(totalError)
       calculateNewWeights(model, eta, totalError);
-      updatetoNewWeights(model);
+      updateToNewWeights(model);
       //logObject("1 run",model)
 
       sumPresentationError += totalError;
@@ -185,11 +187,11 @@ function run(model, inputData){
   })
 
   for (let i = 0; i < model.length - 1; i++){
-    calulateLayers(model[i], model[i+1])
+    calculateLayers(model[i], model[i+1])
   }
 }
 
-function calulateLayers(layer1, layer2){
+function calculateLayers(layer1, layer2){
   for(nodeIndex = 0; nodeIndex < layer2.length; nodeIndex++){
     let node = layer2[nodeIndex];
     let sumOfWeights = node.weights.reduce((acc, weight, index) => {
@@ -200,7 +202,15 @@ function calulateLayers(layer1, layer2){
   };
 }
 
-// Based vagely on https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+function calculateNodeDerivatives(model){
+  model.forEach(layer => {
+    layer.forEach(node => {
+      node.derivative = slope(sigmoid, node.value);
+    }) 
+  })
+}
+
+// Based vaguely on https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
 function calculateError(model, exPair){
   let expectedOutput = exPair.slice(4, 7);
   //console.log("calculateError", expectedOutput);
@@ -219,7 +229,7 @@ function calculateError(model, exPair){
     //console.log(error);
     outputLayer[nodeIndex].error = error;
     //outputLayer[nodeIndex].derivative = slope(sigmoid, error);
-    outputLayer[nodeIndex].derivative = slope(sigmoid, outputLayer[nodeIndex].value);
+    //outputLayer[nodeIndex].derivative = slope(sigmoid, outputLayer[nodeIndex].value);
 
 
     // We need to total error of the layer for later
@@ -230,7 +240,7 @@ function calculateError(model, exPair){
 }
 
 function calculateNewWeights(model, eta, systemError){
-  for (let layerIndex = model.length - 1; layerIndex > 0; layerIndex--){
+  for (let layerIndex = model.length - 1; layerIndex >= 0; layerIndex--){
     //console.log("calculateNewWeights", "layerIndex",layerIndex)
     //console.log(`calculating weights for layer ${layerIndex}`);
     let layer = model[layerIndex];
@@ -247,8 +257,8 @@ function calculateNewWeights(model, eta, systemError){
   }
 }
 
-function updatetoNewWeights(model){
-  for (let layerIndex = model.length - 1; layerIndex > 0; layerIndex--){
+function updateToNewWeights(model){
+  for (let layerIndex = model.length - 1; layerIndex >= 0; layerIndex--){
     for (let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
       for (let weightIndex = 0; weightIndex < model[layerIndex][nodeIndex].weights.length; weightIndex++){
         model[layerIndex][nodeIndex].weights[weightIndex] = model[layerIndex][nodeIndex].newWeights[weightIndex];
@@ -267,7 +277,7 @@ function random(min = 0, max = 100) {
 };
 
 function slope (f, x, dx) {
-  dx = dx || .0000001;
+  dx = dx || 0.0000001;
   return (f(x+dx) - f(x)) / dx;
 }
 
@@ -279,49 +289,80 @@ function calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightInd
   let inputFromWeight = model[layerIndex - 1][weightIndex].value;
   //console.log("inputFromWeight",inputFromWeight, layerIndex, nodeIndex, weightIndex)
 
-  let systemDerivitive = calcSystemDerivitive(model, layerIndex, nodeIndex);
+  let systemGradient = calcSystemGradient(model, layerIndex, nodeIndex);
   //console.log("systemDerivitive", systemDerivitive)
 
-  let delta = calcWeightDelta(systemError, inputFromWeight, eta, systemDerivitive)
+  let delta = calcWeightDelta(systemError, inputFromWeight, eta, systemGradient)
   //console.log("delta", delta)
+
+  //console.log("delta", delta);
+  if (delta < 0){
+    throw "Delta was negative";
+  }
 
   return oldWeight + delta;
 }
 
-function calcWeightDelta(systemError, inputFromWeight, eta, systemDerivitive){
-  //console.log("calcWeightDelta", systemError, inputFromWeight, eta, systemDerivitive);
-  return systemError * inputFromWeight * eta * systemDerivitive;
+/**
+ * This is the part dad means when he talks about the delta rule
+ * @param {*} systemError 
+ * @param {*} inputFromWeight 
+ * @param {*} eta 
+ * @param {*} systemGradient 
+ */
+function calcWeightDelta(systemError, inputFromWeight, eta, systemGradient){
+  //console.log("calcWeightDelta", systemError, inputFromWeight, eta, systemGradient);
+  //return systemError * inputFromWeight * eta * systemGradient;
+  return inputFromWeight * eta * systemGradient;
 }
 
-function calcSystemDerivitive(model, currentNodeLayer, currentNodeIndex){
+function getNodeGradient(model, currentNodeLayer, currentNodeIndex){
+
+}
+
+/**
+ * This is the part dad means when he talks about the chain rule
+ */
+function calcSystemGradient(model, currentNodeLayer, currentNodeIndex){
   let currentNode = model[currentNodeLayer][currentNodeIndex];
   //console.log(currentNode)
 
-  if (model.length - 1 === currentNodeLayer){
-    return currentNode.derivative;
+  
+  // if its the output layer then just get the simple gradient
+  if ( (model.length - 1) === currentNodeLayer){
+    //this should probably not be set here
+    currentNode.gradient = currentNode.error * currentNode.derivative;
+    return currentNode.gradient; 
+  }
+  
+  let systemGradient = 1;  // so we don't multiply by 0
+
+  for (let layerIndex = model.length -1 ; layerIndex > currentNodeLayer; layerIndex--){
+    let layer = model[layerIndex];
+
+    let layerGradient = 0;
+    for (let nodeIndex = 0; nodeIndex < layer.length; nodeIndex++){
+      let node = layer[nodeIndex];
+      let nodeGradient = 0;
+      if (layerIndex === model.length - 1){
+        nodeGradient = node.gradient; // calculated inelegantly above
+      } else {
+        let nextLayer = model[layerIndex + 1];
+        for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
+          console.log("layer", layerIndex, "node", nodeIndex, "weight", weightIndex, "nextLayer", layerIndex+1)
+          nodeGradient += (nextLayer[weightIndex].gradient * node.weights[weightIndex]);
+        }
+      }
+
+      node.gradient = nodeGradient * node.derivative;
+
+      layerGradient += node.gradient;
+    }
+
+    systemGradient *=  layerGradient;
   }
 
-  let layerDerivitives = [];
-
-  for (let i = model.length -1 ; i > currentNodeLayer; i--){
-    let layer = model[i];
-
-    let layerDerivitive = layer.reduce((layerAcc, node) => {
-      return layerAcc + node.weights.reduce((nodeAcc, weight) => {
-        return nodeAcc * (weight * node.derivative); 
-      }, 1)
-    }, 0)
-
-    layerDerivitives.push(layerDerivitive);
-  }
-
-  let sumPrevLayerDerivitives = layerDerivitives.reduce((acc, layerDerivitive) => acc * layerDerivitive, 1);
-
-  //THIS IS NEW AND COULD BE WRONG
-  currentNode.derivative = slope(sigmoid, currentNode.value);
-
-  //console.log("calcSystemDerivitive", currentNode.derivative, layerDerivitives)
-  return currentNode.derivative * sumPrevLayerDerivitives;
+  return systemGradient * currentNode.derivative;
 }
 
 function logObject(label, obj){
