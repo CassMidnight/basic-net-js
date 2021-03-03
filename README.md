@@ -1,5 +1,7 @@
 # basic-net-js
 
+You only need to do the below if you want to actually make changes to the code that I can download, if you just want to look at the code, click the 'Code' tab.
+
 ## Setup
 
 1. Download and install the LTS version of node.js from here: https://nodejs.org/en/ (if it asks if it should add stuff to your path click yes or tick the box)
@@ -7,7 +9,7 @@
 
 ## Clone Git Repo (get the code from github with version control)
 
-About git in general: 
+A bit about git in general: https://www.youtube.com/watch?v=hwP7WQkmECE
 
 I suggest you use Sourcetree as your git GUI, I use it and find it makes connecting to and managing git repos easier and less command line driven.
 
