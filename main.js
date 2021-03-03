@@ -337,7 +337,7 @@ function calcSystemGradient(model, currentNodeLayer, currentNodeIndex){
   
   let systemGradient = 1;  // so we don't multiply by 0
 
-  for (let layerIndex = model.length -1 ; layerIndex > currentNodeLayer; layerIndex--){
+  for (let layerIndex = model.length - 1 ; layerIndex > currentNodeLayer; layerIndex--){
     let layer = model[layerIndex];
 
     let layerGradient = 0;
@@ -345,7 +345,7 @@ function calcSystemGradient(model, currentNodeLayer, currentNodeIndex){
       let node = layer[nodeIndex];
       let nodeGradient = 0;
       if (layerIndex === model.length - 1){
-        nodeGradient = node.gradient; // calculated inelegantly above
+        nodeGradient += node.gradient; // calculated inelegantly above
       } else {
         let nextLayer = model[layerIndex + 1];
         for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
