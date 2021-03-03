@@ -127,7 +127,6 @@ function randomiseNodes(model){
 }
 
 function train(model, data, inputValueCount, outputValueCount){
-  //console.log(data);
 
   let thirds = Math.trunc(data.length / 3);
 
@@ -149,17 +148,22 @@ function train(model, data, inputValueCount, outputValueCount){
     }
   });
 
+  //console.log(trainingData);
+
   //start with eta of 0.1
   let eta = 0.1;
-  let presentations = 1000;
+  let presentations = 100;
 
   for (let k = 1; k <= presentations; k++){
     let sumPresentationError = 0;
     trainingData.forEach(exPair => {
       run(model, exPair);
+      //console.log(exPair);
       let totalError = calculateError(model, exPair);
+      //console.log(totalError)
       calculateNewWeights(model, eta, totalError);
       updatetoNewWeights(model);
+      //logObject("1 run",model)
 
       sumPresentationError += totalError;
     })
@@ -170,7 +174,7 @@ function train(model, data, inputValueCount, outputValueCount){
     console.log(node.value)
   }))
 
-  logObject("model", model)
+  niceLogModel(model)
 }
 
 function run(model, inputData){
@@ -208,11 +212,15 @@ function calculateError(model, exPair){
     // 0 - 0.9 = -0.9
     
     // We want the square of the error
-    let error = (1/2) * Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
+    //let error = (1/2) * Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
+    let error = Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
+
 
     //console.log(error);
     outputLayer[nodeIndex].error = error;
-    outputLayer[nodeIndex].derivative = slope(sigmoid, error);
+    //outputLayer[nodeIndex].derivative = slope(sigmoid, error);
+    outputLayer[nodeIndex].derivative = slope(sigmoid, outputLayer[nodeIndex].value);
+
 
     // We need to total error of the layer for later
     totalError += outputLayer[nodeIndex].error;
@@ -223,12 +231,14 @@ function calculateError(model, exPair){
 
 function calculateNewWeights(model, eta, systemError){
   for (let layerIndex = model.length - 1; layerIndex > 0; layerIndex--){
+    //console.log("calculateNewWeights", "layerIndex",layerIndex)
     //console.log(`calculating weights for layer ${layerIndex}`);
     let layer = model[layerIndex];
     //logObject(`layer ${layerIndex} pre-change`, layer);
     layer.forEach((node, nodeIndex) => {
       //console.log("node index", nodeIndex)
       node.weights.forEach((weight, weightIndex) => {
+        //console.log(nodeIndex, weightIndex)
         let newWeight = calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightIndex);
         model[layerIndex][nodeIndex].newWeights[weightIndex] = newWeight;
       });
@@ -243,7 +253,6 @@ function updatetoNewWeights(model){
       for (let weightIndex = 0; weightIndex < model[layerIndex][nodeIndex].weights.length; weightIndex++){
         model[layerIndex][nodeIndex].weights[weightIndex] = model[layerIndex][nodeIndex].newWeights[weightIndex];
       }
-      //model[layerIndex][nodeIndex].newWeights = [];
     }
   }
 }
@@ -268,6 +277,7 @@ function calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightInd
 
   // We need to limit this to ignore the first layer, not sure how tonight
   let inputFromWeight = model[layerIndex - 1][weightIndex].value;
+  //console.log("inputFromWeight",inputFromWeight, layerIndex, nodeIndex, weightIndex)
 
   let systemDerivitive = calcSystemDerivitive(model, layerIndex, nodeIndex);
   //console.log("systemDerivitive", systemDerivitive)
@@ -287,6 +297,10 @@ function calcSystemDerivitive(model, currentNodeLayer, currentNodeIndex){
   let currentNode = model[currentNodeLayer][currentNodeIndex];
   //console.log(currentNode)
 
+  if (model.length - 1 === currentNodeLayer){
+    return currentNode.derivative;
+  }
+
   let layerDerivitives = [];
 
   for (let i = model.length -1 ; i > currentNodeLayer; i--){
@@ -301,11 +315,27 @@ function calcSystemDerivitive(model, currentNodeLayer, currentNodeIndex){
     layerDerivitives.push(layerDerivitive);
   }
 
-  return currentNode.derivative * layerDerivitives.reduce((acc, layerDerivitive) => acc * layerDerivitive, 1);
+  let sumPrevLayerDerivitives = layerDerivitives.reduce((acc, layerDerivitive) => acc * layerDerivitive, 1);
+
+  //THIS IS NEW AND COULD BE WRONG
+  currentNode.derivative = slope(sigmoid, currentNode.value);
+
+  //console.log("calcSystemDerivitive", currentNode.derivative, layerDerivitives)
+  return currentNode.derivative * sumPrevLayerDerivitives;
 }
 
 function logObject(label, obj){
   console.group(label);
   console.log(JSON.stringify(obj, null, 2));
   console.groupEnd(label);
+}
+
+function niceLogModel(model){
+  console.group('model');
+  model.forEach((layer, index) => {
+    console.group(`layer ${index}`);
+    console.log(index, JSON.stringify(layer, null, 2))
+    console.group(`layer ${index}`);
+  })
+  console.groupEnd('model');
 }
