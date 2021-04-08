@@ -2,6 +2,7 @@ fs = require('fs');
 
 let nodeTemplate = {
   //Feed Forward
+  rawValue: 0,
   value: 0.5,
   bias: 0,
   weights: [],
@@ -89,6 +90,7 @@ fs.readFile('irisTemp.csv', 'utf8', function (err,data) {
   //console.log(irisData);
 
   randomiseNodes(model);
+  //randomiseNodes(model, true);
 
   //console.log("model");
   //console.log(model);
@@ -99,7 +101,7 @@ fs.readFile('irisTemp.csv', 'utf8', function (err,data) {
   train(model, irisData);
 });
 
-function randomiseNodes(model){
+function randomiseNodes(model, debugMode = false){
   for(let layerIndex = 0; layerIndex < model.length; layerIndex++){
     for(let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
 
@@ -115,7 +117,13 @@ function randomiseNodes(model){
       //console.log('randomiseNodes', inputLayerIndex, inputLayerLength)
 
       for(let j = 0; j < inputLayerLength; j++ ){
-        model[layerIndex][nodeIndex].weights.push(Math.random());
+        if (debugMode){
+          // Make the generation predictable for testing
+          model[layerIndex][nodeIndex].weights.push(0.1 * (nodeIndex + layerIndex + j));
+        } else {
+          model[layerIndex][nodeIndex].weights.push(Math.random());
+        }
+        
       }
 
       //console.log(model[layerIndex][nodeIndex].weights);
@@ -149,16 +157,59 @@ function train(model, data, inputValueCount, outputValueCount){
     }
   });
 
-  //console.log(trainingData);
-
   //start with eta of 0.1
   let eta = 0.1;
-  let presentations = 100;
+  let presentations = 1000;
 
   for (let k = 1; k <= presentations; k++){
     let sumPresentationError = 0;
     trainingData.forEach(exPair => {
       run(model, exPair);
+
+      let totalError = calculateError(model, exPair);
+
+      // ----- Output Layer -----
+      const outputLayerIndex = model.length - 1;
+      for (let outputNodeIndex = 0; outputNodeIndex < model[outputLayerIndex].length; outputNodeIndex++){
+        let node = model[outputLayerIndex][outputNodeIndex];
+        // The comment below may be correct, check with dad
+        // let partialDerivativeOfNode = node.value * slope(sigmoid, node.value) * node.error;
+        let partialDerivativeOfNode = node.value * (1 - node.value) * node.error;
+        //console.log(partialDerivativeOfNode, node.value, (1 - node.value), node.error);
+        node.derivative = partialDerivativeOfNode;
+        
+        for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
+          let weightDelta = eta * model[outputLayerIndex - 1][weightIndex].value * partialDerivativeOfNode;
+          node.weights[weightIndex] += weightDelta;
+        }
+      }
+
+      // ----- Hidden Layers ----- //
+      // layerIndex > 0 ignores the first layers since we don't care about the input layer
+      for (let layerIndex = outputLayerIndex - 1; layerIndex > 0; layerIndex--){
+        for (let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
+          let node = model[layerIndex][nodeIndex];
+
+          for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
+            //console.log(layerIndex, nodeIndex, weightIndex)
+       
+            let sumOfForwardLayersNodesPartialDerivativesAndWeights = model[layerIndex + 1].reduce((acc, forwardNode) => {
+              //console.log(forwardNode.derivative, forwardNode.weights[nodeIndex]);
+              return acc + (forwardNode.derivative * forwardNode.weights[nodeIndex]);
+            },0);
+
+            // The comment below may be correct, check with dad
+            //let partialDerivativeOfNode = 0 * slope(sigmoid, node.value) * sumOfForwardLayersNodesPartialDerivativesAndWeights;
+            let partialDerivativeOfNode =  node.value * (1 - node.value) * sumOfForwardLayersNodesPartialDerivativesAndWeights;
+            node.derivative = partialDerivativeOfNode;
+
+            let weightDelta = eta * model[layerIndex - 1][weightIndex].value * partialDerivativeOfNode
+            node.weights[weightIndex] += weightDelta;
+          }
+        }
+      }
+      
+      /*
       //console.log(exPair);
       calculateNodeDerivatives(model);
       let totalError = calculateError(model, exPair);
@@ -166,6 +217,7 @@ function train(model, data, inputValueCount, outputValueCount){
       calculateNewWeights(model, eta, totalError);
       updateToNewWeights(model);
       //logObject("1 run",model)
+      */
 
       sumPresentationError += totalError;
     })
@@ -177,6 +229,70 @@ function train(model, data, inputValueCount, outputValueCount){
   }))
 
   niceLogModel(model)
+
+  let correctCount = 0;
+
+  testingData.forEach(exPair => {
+    run(model, exPair);
+    const expectedResult = [...exPair].slice(4, 7);
+    const actualResult = getOutputValues(model)
+    console.log(expectedResult, actualResult);
+
+    let topIndex = -1;
+    
+    actualResult.forEach((number, index) => {
+      if (topIndex === -1 || number > actualResult[topIndex]){
+        topIndex = index;
+      }
+    });
+
+    //console.log(topIndex)
+
+    if(expectedResult[topIndex] === 1){
+      console.log("Correct");
+      correctCount++;
+    } else {
+      console.log("Incorrect");
+    }
+  });
+
+  console.log(`Correct/Incorrect ${correctCount}/${testingData.length - correctCount}`)
+  console.log(`Accuracy ${(correctCount/testingData.length) * 100}`)
+
+  correctCount = 0;
+
+  validationData.forEach(exPair => {
+    run(model, exPair);
+    const expectedResult = [...exPair].slice(4, 7);
+    const actualResult = getOutputValues(model)
+    console.log(expectedResult, actualResult);
+
+    let topIndex = -1;
+    
+    actualResult.forEach((number, index) => {
+      if (topIndex === -1 || number > actualResult[topIndex]){
+        topIndex = index;
+      }
+    });
+
+    //console.log(topIndex)
+
+    if(expectedResult[topIndex] === 1){
+      console.log("Correct");
+      correctCount++;
+    } else {
+      console.log("Incorrect");
+    }
+  });
+
+  console.log(`Correct/Incorrect ${correctCount}/${validationData.length - correctCount}`)
+  console.log(`Accuracy ${(correctCount/validationData.length) * 100}`)
+}
+
+function getOutputValues(model){
+  return model[model.length - 1].reduce((acc, node) => {
+    return [...acc, node.value];
+  }, []);
 }
 
 function run(model, inputData){
@@ -197,8 +313,10 @@ function calculateLayers(layer1, layer2){
     let sumOfWeights = node.weights.reduce((acc, weight, index) => {
       return acc + (weight * layer1[index].value);
     }, 0); 
+
+    node.rawValue = sumOfWeights + node.bias;
     
-    node.value = sigmoid(sumOfWeights + node.bias);
+    node.value = sigmoid(node.rawValue);
   };
 }
 
@@ -223,7 +341,8 @@ function calculateError(model, exPair){
     
     // We want the square of the error
     //let error = (1/2) * Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
-    let error = Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
+    //let error = Math.pow(expectedOutput[nodeIndex] - outputLayer[nodeIndex].value, 2);
+    let error = expectedOutput[nodeIndex] - outputLayer[nodeIndex].value;
 
 
     //console.log(error);
@@ -280,6 +399,14 @@ function slope (f, x, dx) {
   dx = dx || 0.0000001;
   return (f(x+dx) - f(x)) / dx;
 }
+
+/*
+// From: https://math.stackexchange.com/questions/78575/derivative-of-sigmoid-function-sigma-x-frac11e-x
+//0.21492890298354272
+function slope (f, x) {
+  return f(x) * (1 - f(x));
+}
+*/
 
 function calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightIndex){
   //console.log(eta, systemError, layerIndex, nodeIndex, weightIndex);
