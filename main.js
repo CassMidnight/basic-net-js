@@ -2,16 +2,13 @@ fs = require('fs');
 
 let nodeTemplate = {
   //Feed Forward
-  rawValue: 0,
   value: 0.5,
   bias: 0,
   weights: [],
 
-  //Back Propergation
-  newWeights: [],
+  //Back Propagation
   error: 0,
   derivative: 0,
-  gradient: 0,
 };
 
 function createTemplateNode(){
@@ -37,15 +34,15 @@ for (i = 0; i < inputNodeCount; i++){
 
 let layer1 = [];
 
-for (i = 0; i < 2; i++){
+for (i = 0; i < 10; i++){
   layer1.push(createTemplateNode());
 }
 
-//let layer2 = [];
+let layer2 = [];
 
-//for (i = 0; i < 10; i++){
-//  layer2.push(createTemplateNode());
-//}
+for (i = 0; i < 10; i++){
+  layer2.push(createTemplateNode());
+}
 
 let outputNodes = [];
 
@@ -53,8 +50,8 @@ for (i = 0; i < outputNodeCount; i++){
   outputNodes.push(createTemplateNode());
 }
 
-//let model = [inputNodes, layer1, layer2, outputNodes];
-let model = [inputNodes, layer1, outputNodes];
+let model = [inputNodes, layer1, layer2, outputNodes];
+//let model = [inputNodes, layer1, outputNodes];
 
 
 let irisData = [];
@@ -91,11 +88,6 @@ fs.readFile('irisTemp.csv', 'utf8', function (err,data) {
 
   randomiseNodes(model);
   //randomiseNodes(model, true);
-
-  //console.log("model");
-  //console.log(model);
-
-  //run(model, [0.5, 0.5, 0.5, 0.5]);
 
   //train
   train(model, irisData);
@@ -173,7 +165,7 @@ function train(model, data, inputValueCount, outputValueCount){
       for (let outputNodeIndex = 0; outputNodeIndex < model[outputLayerIndex].length; outputNodeIndex++){
         let node = model[outputLayerIndex][outputNodeIndex];
         // The comment below may be correct, check with dad
-        // let partialDerivativeOfNode = node.value * slope(sigmoid, node.value) * node.error;
+        //let partialDerivativeOfNode = node.value * slope(sigmoid, node.value) * node.error;
         let partialDerivativeOfNode = node.value * (1 - node.value) * node.error;
         //console.log(partialDerivativeOfNode, node.value, (1 - node.value), node.error);
         node.derivative = partialDerivativeOfNode;
@@ -209,16 +201,6 @@ function train(model, data, inputValueCount, outputValueCount){
         }
       }
       
-      /*
-      //console.log(exPair);
-      calculateNodeDerivatives(model);
-      let totalError = calculateError(model, exPair);
-      //console.log(totalError)
-      calculateNewWeights(model, eta, totalError);
-      updateToNewWeights(model);
-      //logObject("1 run",model)
-      */
-
       sumPresentationError += totalError;
     })
     console.log(k + "/" + presentations, sumPresentationError/trainingData.length);
@@ -312,20 +294,10 @@ function calculateLayers(layer1, layer2){
     let node = layer2[nodeIndex];
     let sumOfWeights = node.weights.reduce((acc, weight, index) => {
       return acc + (weight * layer1[index].value);
-    }, 0); 
-
-    node.rawValue = sumOfWeights + node.bias;
+    }, 0);
     
-    node.value = sigmoid(node.rawValue);
+    node.value = sigmoid(sumOfWeights + node.bias);
   };
-}
-
-function calculateNodeDerivatives(model){
-  model.forEach(layer => {
-    layer.forEach(node => {
-      node.derivative = slope(sigmoid, node.value);
-    }) 
-  })
 }
 
 // Based vaguely on https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
@@ -358,34 +330,6 @@ function calculateError(model, exPair){
   return totalError;
 }
 
-function calculateNewWeights(model, eta, systemError){
-  for (let layerIndex = model.length - 1; layerIndex >= 0; layerIndex--){
-    //console.log("calculateNewWeights", "layerIndex",layerIndex)
-    //console.log(`calculating weights for layer ${layerIndex}`);
-    let layer = model[layerIndex];
-    //logObject(`layer ${layerIndex} pre-change`, layer);
-    layer.forEach((node, nodeIndex) => {
-      //console.log("node index", nodeIndex)
-      node.weights.forEach((weight, weightIndex) => {
-        //console.log(nodeIndex, weightIndex)
-        let newWeight = calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightIndex);
-        model[layerIndex][nodeIndex].newWeights[weightIndex] = newWeight;
-      });
-    }) 
-    //logObject(`layer ${layerIndex} post-change`, layer);
-  }
-}
-
-function updateToNewWeights(model){
-  for (let layerIndex = model.length - 1; layerIndex >= 0; layerIndex--){
-    for (let nodeIndex = 0; nodeIndex < model[layerIndex].length; nodeIndex++){
-      for (let weightIndex = 0; weightIndex < model[layerIndex][nodeIndex].weights.length; weightIndex++){
-        model[layerIndex][nodeIndex].weights[weightIndex] = model[layerIndex][nodeIndex].newWeights[weightIndex];
-      }
-    }
-  }
-}
-
 function sigmoid(x) {
   return 1 / ( 1 + Math.pow( Math.E, -1 * x) );
 }
@@ -407,96 +351,6 @@ function slope (f, x) {
   return f(x) * (1 - f(x));
 }
 */
-
-function calcNewWeight(eta, systemError, model, layerIndex, nodeIndex, weightIndex){
-  //console.log(eta, systemError, layerIndex, nodeIndex, weightIndex);
-  let oldWeight = model[layerIndex][nodeIndex].weights[weightIndex];
-
-  // We need to limit this to ignore the first layer, not sure how tonight
-  let inputFromWeight = model[layerIndex - 1][weightIndex].value;
-  //console.log("inputFromWeight",inputFromWeight, layerIndex, nodeIndex, weightIndex)
-
-  let systemGradient = calcSystemGradient(model, layerIndex, nodeIndex);
-  //console.log("systemDerivitive", systemDerivitive)
-
-  let delta = calcWeightDelta(systemError, inputFromWeight, eta, systemGradient)
-  //console.log("delta", delta)
-
-  //console.log("delta", delta);
-  if (delta < 0){
-    throw "Delta was negative";
-  }
-
-  return oldWeight + delta;
-}
-
-/**
- * This is the part dad means when he talks about the delta rule
- * @param {*} systemError 
- * @param {*} inputFromWeight 
- * @param {*} eta 
- * @param {*} systemGradient 
- */
-function calcWeightDelta(systemError, inputFromWeight, eta, systemGradient){
-  //console.log("calcWeightDelta", systemError, inputFromWeight, eta, systemGradient);
-  //return systemError * inputFromWeight * eta * systemGradient;
-  return inputFromWeight * eta * systemGradient;
-}
-
-function getNodeGradient(model, currentNodeLayer, currentNodeIndex){
-
-}
-
-/**
- * This is the part dad means when he talks about the chain rule
- */
-function calcSystemGradient(model, currentNodeLayer, currentNodeIndex){
-  let currentNode = model[currentNodeLayer][currentNodeIndex];
-  //console.log(currentNode)
-
-  
-  // if its the output layer then just get the simple gradient
-  if ( (model.length - 1) === currentNodeLayer){
-    //this should probably not be set here
-    currentNode.gradient = currentNode.error * currentNode.derivative;
-    return currentNode.gradient; 
-  }
-  
-  let systemGradient = 1;  // so we don't multiply by 0
-
-  for (let layerIndex = model.length - 1 ; layerIndex > currentNodeLayer; layerIndex--){
-    let layer = model[layerIndex];
-
-    let layerGradient = 0;
-    for (let nodeIndex = 0; nodeIndex < layer.length; nodeIndex++){
-      let node = layer[nodeIndex];
-      let nodeGradient = 0;
-      if (layerIndex === model.length - 1){
-        nodeGradient += node.gradient; // calculated inelegantly above
-      } else {
-        let nextLayer = model[layerIndex + 1];
-        for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
-          console.log("layer", layerIndex, "node", nodeIndex, "weight", weightIndex, "nextLayer", layerIndex+1)
-          nodeGradient += (nextLayer[weightIndex].gradient * node.weights[weightIndex]);
-        }
-      }
-
-      node.gradient = nodeGradient * node.derivative;
-
-      layerGradient += node.gradient;
-    }
-
-    systemGradient *=  layerGradient;
-  }
-
-  return systemGradient * currentNode.derivative;
-}
-
-function logObject(label, obj){
-  console.group(label);
-  console.log(JSON.stringify(obj, null, 2));
-  console.groupEnd(label);
-}
 
 function niceLogModel(model){
   console.group('model');
