@@ -42,8 +42,8 @@ You can use any git tool you want but here is the how to for Sourcetree.
 1. Open the folder with the project in VScode 
 2. Run the below command in the VScode terminal
 
-`node .\main.js`  
+`node .\iris.js`  
 
 If the output in the terminal is too long for the scrollback use the below to redirect the output to a file called output.txt in the same directory.
 
-`node .\main.js > output.txt`
+`node .\iris.js > output.txt`

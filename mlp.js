@@ -1,5 +1,3 @@
-fs = require('fs');
-
 let nodeTemplate = {
   // Feed Forward
   netValue: 0.5,
@@ -23,76 +21,6 @@ function createTemplateNode(){
   })
   return {...nodeTemplate, weights: [], newWeights: []}
 }
-
-let inputNodeCount = 4;
-let outputNodeCount = 3;
-
-let inputNodes = [];
-
-for (i = 0; i < inputNodeCount; i++){
-  inputNodes.push(createTemplateNode());
-}
-
-let layer1 = [];
-
-for (i = 0; i < 10; i++){
-  layer1.push(createTemplateNode());
-}
-
-let layer2 = [];
-
-for (i = 0; i < 10; i++){
-  layer2.push(createTemplateNode());
-}
-
-let outputNodes = [];
-
-for (i = 0; i < outputNodeCount; i++){
-  outputNodes.push(createTemplateNode());
-}
-
-let model = [inputNodes, layer1, layer2, outputNodes];
-//let model = [inputNodes, layer1, outputNodes];
-
-
-let irisData = [];
-
-fs.readFile('irisTemp.csv', 'utf8', function (err,data) {
-  let lines = data.split('\r\n');
-  irisData = lines.map(line => {
-    //0.5,0.33,0.14,0.02,1 
-    let values = line.split(',');
-
-    //console.log(values);
-
-    let inputValues = values.slice(0, 4).map(val => parseFloat(val) ); 
-
-    let outputValues = [];
-    
-    switch (values[4]){
-      case '1': 
-        outputValues = [1, 0, 0];
-        break;
-      case '2': 
-        outputValues = [0, 1, 0];
-        break;
-      case '3': 
-        outputValues = [0, 0, 1];
-        break;
-    } 
-
-    return [ ...inputValues, ...outputValues ];
-  });
-
-  //console.log("irisData");
-  //console.log(irisData);
-
-  randomiseNodes(model);
-  //randomiseNodes(model, true);
-
-  //train
-  train(model, irisData);
-});
 
 function randomiseNodes(model, debugMode = false){
   for(let layerIndex = 0; layerIndex < model.length; layerIndex++){
@@ -126,63 +54,6 @@ function randomiseNodes(model, debugMode = false){
     }
   }
   //logObject("randomised model", model);
-}
-
-function train(model, data, inputValueCount, outputValueCount){
-
-  let thirds = Math.trunc(data.length / 3);
-
-  let trainingData = [];
-  let testingData = [];
-  let validationData = [];
-
-  data.forEach(exPair => {
-    switch(random(1,4)){
-      case 1: 
-        trainingData.push(exPair)
-        break;
-      case 2: 
-        testingData.push(exPair)
-        break;
-      case 3: 
-        validationData.push(exPair)
-        break;
-    }
-  });
-
-  //start with eta of 0.1
-  let eta = 0.1;
-  let presentations = 1000;
-
-  for (let k = 1; k <= presentations; k++){
-    let sumPresentationError = 0;
-    trainingData.forEach(exPair => {
-      //console.log(exPair);
-
-      let forwardOutput = forwardPass(model, exPair);
-      //console.log(forwardOutput);
-
-      let totalError = backwardPass(model, exPair, eta);
-      //console.log(totalError);
-      
-      sumPresentationError += totalError;
-    })
-    console.log(k + "/" + presentations, sumPresentationError/trainingData.length);
-  }
-
-  console.log(model[model.length - 1].forEach(node => {
-    console.log(node.value)
-  }))
-
-  niceLogModel(model)
-
-  const testingDataResult = evaluateOnList(model, testingData);
-
-  console.log(testingDataResult);
-
-  const validationDataResult = evaluateOnList(model, validationData);
-
-  console.log(validationDataResult);
 }
 
 function evaluateOnList(model, exPairList, presentations){
@@ -220,12 +91,6 @@ function evaluateOnList(model, exPairList, presentations){
   result.accuracy = (result.correct/exPairList.length) * 100;
 
   return result;
-}
-
-function getOutputValues(model){
-  return model[model.length - 1].reduce((acc, node) => {
-    return [...acc, node.value];
-  }, []);
 }
 
 function forwardPass(model, inputData){
@@ -324,11 +189,6 @@ function sigmoid(x) {
   return 1 / ( 1 + Math.pow( Math.E, -1 * x) );
 }
 
-function random(min = 0, max = 100) {
-  let num = Math.random() * (max - min) + min;
-  return Math.floor(num);
-};
-
 function slope (f, x, dx) {
   dx = dx || 0.00000000000001;
   return (f(x+dx) - f(x)) / dx;
@@ -342,6 +202,12 @@ function slope (f, x) {
 }
 */
 
+function getOutputValues(model){
+  return model[model.length - 1].reduce((acc, node) => {
+    return [...acc, node.value];
+  }, []);
+}
+
 function niceLogModel(model){
   console.group('model');
   model.forEach((layer, index) => {
@@ -350,4 +216,14 @@ function niceLogModel(model){
     console.group(`layer ${index}`);
   })
   console.groupEnd('model');
+}
+
+module.exports = {
+  createTemplateNode,
+  randomiseNodes,
+  forwardPass,
+  backwardPass,
+  evaluateOnList,
+  getOutputValues,
+  niceLogModel
 }
