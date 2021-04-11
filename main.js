@@ -1,12 +1,13 @@
 fs = require('fs');
 
 let nodeTemplate = {
-  //Feed Forward
+  // Feed Forward
+  netValue: 0.5,
   value: 0.5,
   bias: 0,
   weights: [],
 
-  //Back Propagation
+  // Back Propagation
   error: 0,
   derivative: 0,
 };
@@ -251,6 +252,7 @@ function calculateLayers(layer1, layer2){
       return acc + (weight * layer1[index].value);
     }, 0);
     
+    node.netValue = sumOfWeights + node.bias;
     node.value = sigmoid(sumOfWeights + node.bias);
   };
 }
@@ -262,10 +264,7 @@ function backwardPass(model, exPair, eta){
   const outputLayerIndex = model.length - 1;
   for (let outputNodeIndex = 0; outputNodeIndex < model[outputLayerIndex].length; outputNodeIndex++){
     let node = model[outputLayerIndex][outputNodeIndex];
-    // The comment below may be correct, check with dad
-    //let partialDerivativeOfNode = node.value * slope(sigmoid, node.value) * node.error;
-    let partialDerivativeOfNode = node.value * (1 - node.value) * node.error;
-    //console.log(partialDerivativeOfNode, node.value, (1 - node.value), node.error);
+    let partialDerivativeOfNode = slope(sigmoid, node.netValue) * node.error;
     node.derivative = partialDerivativeOfNode;
     
     for (let weightIndex = 0; weightIndex < node.weights.length; weightIndex++){
@@ -288,9 +287,7 @@ function backwardPass(model, exPair, eta){
           return acc + (forwardNode.derivative * forwardNode.weights[nodeIndex]);
         },0);
 
-        // The comment below may be correct, check with dad
-        //let partialDerivativeOfNode = 0 * slope(sigmoid, node.value) * sumOfForwardLayersNodesPartialDerivativesAndWeights;
-        let partialDerivativeOfNode =  node.value * (1 - node.value) * sumOfForwardLayersNodesPartialDerivativesAndWeights;
+        let partialDerivativeOfNode = slope(sigmoid, node.netValue) * sumOfForwardLayersNodesPartialDerivativesAndWeights;
         node.derivative = partialDerivativeOfNode;
 
         let weightDelta = eta * model[layerIndex - 1][weightIndex].value * partialDerivativeOfNode
@@ -333,7 +330,7 @@ function random(min = 0, max = 100) {
 };
 
 function slope (f, x, dx) {
-  dx = dx || 0.0000001;
+  dx = dx || 0.00000000000001;
   return (f(x+dx) - f(x)) / dx;
 }
 
